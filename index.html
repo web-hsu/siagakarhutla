@@ -4943,10 +4943,19 @@ body.jpg-export-mode .map-title{
               }).catch(reject).finally(function () {
                 document.body.classList.remove("jpg-export-mode");
 
-                if (typeof map !== "undefined") {
-                  setTimeout(function () {
+                // FIX: peta bergeser setiap kali export. invalidateSize({pan:false})
+                // menjaga pojok kiri-atas peta, bukan titik tengahnya, sehingga saat
+                // ukuran peta kembali normal titik tengahnya ikut berubah. Posisi
+                // tersebut lalu dipakai sebagai acuan export berikutnya (makin geser).
+                // Solusi: kembalikan center + zoom persis seperti sebelum export.
+                if (typeof map !== "undefined" && viewExport) {
+                  var pulihkanViewPeta = function () {
                     map.invalidateSize({ pan: false });
-                  }, 100);
+                    map.setView(viewExport.center, viewExport.zoom, { animate: false });
+                  };
+                  pulihkanViewPeta();
+                  requestAnimationFrame(pulihkanViewPeta);
+                  setTimeout(pulihkanViewPeta, 150);
                 }
               });
             });
