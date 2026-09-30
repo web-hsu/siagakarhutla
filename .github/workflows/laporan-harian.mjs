@@ -18,6 +18,9 @@ const ctx = await browser.newContext({
   acceptDownloads: true,
 });
 const page = await ctx.newPage();
+await page.addInitScript(() => {
+  try { sessionStorage.setItem("hsu_welcome_shown", "1"); } catch (e) {}
+});
 page.on("dialog", (d) => { console.log("Dialog web:", d.message()); d.dismiss(); });
 page.on("pageerror", (e) => console.log("Error halaman:", e.message));
 
@@ -26,7 +29,8 @@ await page.waitForSelector(".jpg-btn", { timeout: 60_000 });
 await page.waitForFunction(() => typeof html2canvas !== "undefined" && !!window.jspdf, null, { timeout: 60_000 });
 await page.waitForSelector(".leaflet-tile-loaded", { timeout: 60_000 }).catch(() => console.log("Peta belum terlihat, lanjut."));
 await page.waitForTimeout(20_000); // beri waktu data hotspot/AQI/ISPA selesai tampil
-
+await page.evaluate(() => { if (typeof closeWelcomePopup === "function") closeWelcomePopup(); });
+await page.waitForTimeout(1_000);
 async function ambil(selector, mime) {
   const [dl] = await Promise.all([
     page.waitForEvent("download", { timeout: 180_000 }),
