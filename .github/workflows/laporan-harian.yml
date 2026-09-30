@@ -20,7 +20,7 @@ jobs:
           npm i playwright
           npx playwright install --with-deps chromium
       - name: Buat JPG + PDF lalu kirim email
-        run: node laporan-harian.mjs
+        run: node .github/workflows/laporan-harian.mjs
         env:
           URL_DASHBOARD: ${{ secrets.URL_DASHBOARD }}
           URL_GAS: ${{ secrets.URL_GAS }}
