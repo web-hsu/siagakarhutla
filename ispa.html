@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<script src="config.js"></script>
+<script src="gas-shim.js"></script>
+
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard ISPA - Hulu Sungai Utara</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --green:#076b47;--green2:#0d8a5c;--greenSoft:#e9f6f0;
+      --blue:#1976d2;--orange:#ef8b00;--red:#d93b35;--purple:#7e57c2;
+      --ink:#14251e;--muted:#66756e;--line:#dfe8e3;--bg:#f3f7f5;--card:#fff;
+      --shadow:0 7px 24px rgba(31,65,50,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+    .header{background:linear-gradient(115deg,#075437,#0c7a52);color:#fff;padding:18px 4%}
+    .header-inner{max-width:1480px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .brand{display:flex;align-items:center;gap:14px}.brand-icon{width:54px;height:54px;border-radius:14px;background:#fff;color:var(--green);display:grid;place-items:center;font-size:29px}
+    h1{font-size:23px;margin:0}.brand p{margin:4px 0 0;font-size:13px;opacity:.88}
+    .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.top-btn{border:1px solid rgba(255,255,255,.38);background:rgba(255,255,255,.12);color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;cursor:pointer}
+    .container{width:94%;max-width:1480px;margin:18px auto 36px}
+    .toolbar,.card{background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}
+    .toolbar{padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap}
+    .toolbar-left{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.field{display:flex;flex-direction:column;gap:6px}.field label{font-size:11px;color:var(--muted);font-weight:800}.field input,.field select{height:40px;border:1px solid var(--line);border-radius:8px;padding:0 11px;background:#fff;min-width:190px;color:var(--ink)}
+    .btn{height:40px;border:0;border-radius:8px;padding:0 15px;font-weight:800;cursor:pointer}.btn-green{background:var(--green);color:#fff}.btn-light{background:#eef4f1;color:var(--ink)}
+    .update-text{font-size:11px;color:var(--muted)}
+    .toolbar-right{text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+    .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--green);background:var(--greenSoft);border:1px solid #cfe7dc;padding:5px 10px;border-radius:99px}
+    .live .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:blink 1.6s infinite}
+    .live.off{color:var(--muted);background:#f0f3f2;border-color:var(--line)}.live.off .dot{background:#b3bdb8;animation:none}
+    @keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.8)}}
+    .stat .num.flash{animation:flash .9s ease-out}
+    @keyframes flash{0%{background:#fff3c4;box-shadow:0 0 0 6px #fff3c4}100%{background:transparent;box-shadow:none}}
+    .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:14px}.stat{padding:16px 17px;min-height:104px;position:relative;overflow:hidden}.stat:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--green)}.stat .label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase}.stat .num{font-size:32px;font-weight:900;margin-top:7px}.stat .sub{font-size:10px;color:var(--muted);margin-top:3px}.stat.total{background:linear-gradient(135deg,#076b47,#0b895a);color:#fff}.stat.total:before{display:none}.stat.total .label,.stat.total .sub{color:rgba(255,255,255,.84)}.stat.balita:before{background:#43a047}.stat.anak:before{background:#1976d2}.stat.remaja:before{background:#7e57c2}.stat.dewasa:before{background:#ef8b00}.stat.lansia:before{background:#d93b35}
+    .grid2{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;margin-bottom:14px}.card{padding:18px}.card-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}.card-title h2{font-size:17px;margin:0}.card-title p{font-size:11px;color:var(--muted);margin:4px 0 0}.chart-wrap{height:310px;position:relative}.chart-harian-wrap{height:300px}
+    .progress{display:flex;align-items:center;gap:10px}.progress-track{height:8px;background:#e9efec;border-radius:99px;overflow:hidden;min-width:130px}.progress-bar{height:100%;background:var(--green);transition:width .4s}.progress strong{font-size:12px}
+    .table-wrap{overflow:auto;max-height:400px;border:1px solid var(--line);border-radius:9px}table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:10px 11px;border-bottom:1px solid var(--line);font-size:12px;text-align:center}th{position:sticky;top:0;background:#f2f6f4;color:#34463e;z-index:1}th:first-child,td:first-child{text-align:left}.total-col{font-weight:900;color:var(--green)}
+    tr.baris-klik{cursor:pointer}tr.baris-klik:hover{background:#eef6f1}
+    .hint-koreksi{font-size:11px;color:var(--muted);margin-top:8px;display:none}.hint-koreksi.show{display:block}
+    .form-grid{display:grid;grid-template-columns:1.1fr 1.4fr repeat(5,.8fr);gap:10px;align-items:end}.form-grid .field input,.form-grid .field select{min-width:0;width:100%}.form-actions{display:flex;gap:9px;margin-top:14px}.notice{display:none;margin-top:12px;padding:11px 13px;border-radius:8px;font-size:12px}.notice.ok{display:block;background:#e7f5ed;color:#17603f;border:1px solid #b9dfc9}.notice.err{display:block;background:#fdecea;color:#a62b25;border:1px solid #f2c5c2}
+    .empty{padding:32px;text-align:center;color:var(--muted);font-size:13px}.loading{opacity:.55;pointer-events:none}.footer{margin-top:20px;text-align:center;color:#7a8982;font-size:11px;padding:12px}
+    .modal{display:none;position:fixed;inset:0;background:rgba(8,35,24,.58);z-index:9999;align-items:center;justify-content:center;padding:18px}.modal.show{display:flex}.modal-box{width:min(980px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.28);padding:20px;position:relative}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}.modal-head h2{margin:0;font-size:19px}.modal-head p{margin:5px 0 0;color:var(--muted);font-size:12px}.close-btn{border:0;background:#edf4f0;color:var(--ink);width:36px;height:36px;border-radius:9px;font-size:20px;cursor:pointer}.modal-box .form-grid{grid-template-columns:repeat(3,1fr)}
+    @media(max-width:700px){.modal{padding:8px}.modal-box{padding:15px}.modal-box .form-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:430px){.modal-box .form-grid{grid-template-columns:1fr}}
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}.form-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:700px){.header-inner{align-items:flex-start;flex-direction:column}.container{width:96%}.stats{grid-template-columns:repeat(2,1fr)}.toolbar-left{width:100%}.field{flex:1}.field input,.field select{min-width:0;width:100%}.chart-wrap{height:260px}.chart-harian-wrap{height:260px}.form-grid{grid-template-columns:1fr 1fr}.form-grid .wide{grid-column:span 2}.top-actions{width:100%}.top-btn{flex:1;text-align:center}.toolbar-right{width:100%;align-items:flex-start;text-align:left}}
+    @media(max-width:430px){.stats{grid-template-columns:1fr 1fr}.stat{padding:13px;min-height:90px}.stat .num{font-size:26px}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:auto}.toolbar{align-items:stretch}.toolbar-left{display:grid;grid-template-columns:1fr}.btn{width:100%}}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand"><div class="brand-icon">🫁</div><div><h1>Informasi ISPA Kabupaten Hulu Sungai Utara</h1><p>Dashboard pemantauan dan penginputan data ISPA harian per fasilitas pelayanan kesehatan</p></div></div>
+      <div class="top-actions"><a class="top-btn" href="?" target="_top">← Dashboard Hotspot</a><button class="top-btn" onclick="bukaForm()">＋ Input Data Harian</button></div>
+    </div>
+  </header>
+
+  <main class="container" id="main">
+    <section class="toolbar">
+      <div class="toolbar-left">
+        <div class="field"><label>BULAN DATA</label><input type="month" id="filterBulan" onchange="muatDashboardBulan(this.value)"></div>
+        <div class="field"><label>PUSKESMAS / FASILITAS</label>
+          <select id="filterPuskesmas" onchange="muatDashboardBulan(document.getElementById('filterBulan').value)">
+            <option value="">Semua Puskesmas (rekap bulanan)</option>
+          </select>
+        </div>      </div>
+      <div class="toolbar-right">
+        <div class="progress"><div class="progress-track"><div id="progressBar" class="progress-bar" style="width:0%"></div></div><strong id="progressText">0/14 input</strong></div>
+        <div class="update-text" id="statusTanggal">Memuat data...</div>
+        <div class="live" id="liveBadge"><span class="dot"></span><span id="liveText">Auto refresh aktif</span></div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="card stat total"><div class="label">Total Kasus ISPA</div><div class="num" id="nTotal">0</div><div class="sub">semua kelompok umur</div></div>
+      <div class="card stat balita"><div class="label">Balita</div><div class="num" id="nBalita">0</div><div class="sub">0–4 tahun</div></div>
+      <div class="card stat anak"><div class="label">Anak</div><div class="num" id="nAnak">0</div><div class="sub">kelompok anak</div></div>
+      <div class="card stat remaja"><div class="label">Remaja</div><div class="num" id="nRemaja">0</div><div class="sub">kelompok remaja</div></div>
+      <div class="card stat dewasa"><div class="label">Dewasa</div><div class="num" id="nDewasa">0</div><div class="sub">kelompok dewasa</div></div>
+      <div class="card stat lansia"><div class="label">Lansia</div><div class="num" id="nLansia">0</div><div class="sub">kelompok lansia</div></div>
+    </section>
+
+    <section class="grid2">
+      <div class="card"><div class="card-title"><div><h2 id="judulTren">Jumlah ISPA per Puskesmas / Fasilitas</h2><p id="subJudulTren">Total kasus ISPA berdasarkan Puskesmas/fasilitas pada bulan yang dipilih.</p></div></div><div class="chart-wrap"><canvas id="chartTren"></canvas></div></div>
+      <div class="card"><div class="card-title"><div><h2>Komposisi Kelompok Umur</h2><p>Distribusi kasus (%) pada bulan yang dipilih.</p></div></div><div class="chart-wrap"><canvas id="chartKategori"></canvas></div></div>
+    </section>
+
+    <section class="card" id="kartuGrafikHarian">
+      <div class="card-title">
+        <div>
+          <h2 id="judulGrafikHarian">Grafik Batang Harian ISPA</h2>
+          <p id="subJudulGrafikHarian">Pilih Puskesmas / Fasilitas untuk melihat jumlah kasus ISPA per hari.</p>
+        </div>
+      </div>
+      <div class="chart-wrap chart-harian-wrap">
+        <canvas id="chartHarian"></canvas>
+        <div id="emptyGrafikHarian" class="empty"
+             style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">
+          Belum ada data ISPA harian pada bulan yang dipilih.
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title"><div><h2 id="judulRekap">Rekap ISPA per Puskesmas / Fasilitas</h2><p id="subJudulRekap">Data harian berdasarkan file Excel: Balita, Anak, Remaja, Dewasa dan Lansia.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th id="thKolomUtama">Puskesmas / Fasilitas</th><th>Balita</th><th>Anak</th><th>Remaja</th><th>Dewasa</th><th>Lansia</th><th>Total</th></tr></thead><tbody id="tbodyISPA"><tr><td colspan="7" class="empty">Memuat data...</td></tr></tbody></table></div>
+      <div class="hint-koreksi" id="hintKoreksi">✎ Klik salah satu baris tanggal di atas untuk mengoreksi data hari itu.</div>
+    </section>
+
+    <div class="modal" id="formModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onclick="tutupJikaLatar(event)">
+      <div class="modal-box">
+        <div class="modal-head"><div><h2 id="modalTitle">Form Input Data Harian ISPA</h2><p>Satu baris untuk satu Puskesmas/fasilitas pada satu tanggal. Jika tanggal dan Puskesmas sama sudah ada, data akan diperbarui.</p></div><button class="close-btn" type="button" aria-label="Tutup" onclick="tutupForm()">×</button></div>
+        <form id="ispaForm" onsubmit="simpanISPA(event)">
+          <div class="form-grid">
+            <div class="field wide"><label>TANGGAL *</label><input required type="date" id="fTanggal"></div>
+            <div class="field wide"><label>PUSKESMAS / FASILITAS *</label><select required id="fPuskesmas"><option value="">Pilih...</option></select></div>
+            <div class="field"><label>BALITA</label><input min="0" step="1" type="number" id="fBalita" value="0"></div>
+            <div class="field"><label>ANAK</label><input min="0" step="1" type="number" id="fAnak" value="0"></div>
+            <div class="field"><label>REMAJA</label><input min="0" step="1" type="number" id="fRemaja" value="0"></div>
+            <div class="field"><label>DEWASA</label><input min="0" step="1" type="number" id="fDewasa" value="0"></div>
+            <div class="field"><label>LANSIA</label><input min="0" step="1" type="number" id="fLansia" value="0"></div>
+          </div>
+          <div class="form-actions"><button class="btn btn-green" id="btnSimpan" type="submit">💾 Simpan Data</button><button class="btn btn-light" type="button" onclick="resetForm()">Kosongkan</button><button class="btn btn-light" type="button" onclick="tutupForm()">Tutup</button></div>
+          <div id="notice" class="notice"></div>
+        </form>
+      </div>
+    </div>
+    <div class="footer">Sistem Informasi ISPA • Kabupaten Hulu Sungai Utara</div>
+  </main>
+
+<script>
+  let chartTren=null, chartKategori=null, chartHarian=null, modeTrenSebelumnya=null;
+  let timerAuto=null, sedangMuat=false, sidikJariData='';
+  let rincianAktif=[], modeHarianAktif=false;
+  const $=id=>document.getElementById(id);
+  function todayISO(){ const d=new Date(); const z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+  function angka(v){ return new Intl.NumberFormat('id-ID').format(Number(v)||0); }
+  function persen(v,t){ return t? (Math.round(v/t*1000)/10).toString().replace('.',',')+'%' : '0%'; }
+  function jamSekarang(){ const d=new Date(); const z=n=>String(n).padStart(2,'0'); return z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds()); }
+
+  /* ====== PLUGIN LABEL ANGKA PADA GRAFIK BATANG (horizontal & vertikal) ====== */
+  const pluginLabelBar={
+    id:'pluginLabelBar',
+    afterDatasetsDraw(chart){
+      const ctx=chart.ctx, ds=chart.data.datasets[0]; if(!ds) return;
+      const horizontal = chart.options.indexAxis==='y';
+      ctx.save();
+      ctx.font='bold 11px Arial'; ctx.fillStyle='#14251e';
+      if(horizontal){ ctx.textAlign='left'; ctx.textBaseline='middle'; } else { ctx.textAlign='center'; ctx.textBaseline='bottom'; }
+      chart.getDatasetMeta(0).data.forEach((bar,i)=>{
+        const v=Number(ds.data[i])||0; if(!v) return;
+        if(horizontal) ctx.fillText(angka(v), bar.x+7, bar.y);
+        else ctx.fillText(angka(v), bar.x, bar.y-6);
+      });
+      ctx.restore();
+    }
+  };
+
+  /* ====== PLUGIN LABEL PERSENTASE PADA DOUGHNUT + TOTAL DI TENGAH ====== */
+  const pluginLabelDonut={
+    id:'pluginLabelDonut',
+    afterDatasetsDraw(chart){
+      const ctx=chart.ctx, ds=chart.data.datasets[0]; if(!ds) return;
+      const total=ds.data.reduce((a,b)=>a+(Number(b)||0),0);
+      ctx.save();
+      if(total){
+        ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+          const v=Number(ds.data[i])||0; if(!v) return;
+          const p=v/total*100; if(p<3) return;
+          const c=arc.getCenterPoint(), txt=persen(v,total);
+          ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.strokeText(txt,c.x,c.y);
+          ctx.fillStyle='#fff'; ctx.fillText(txt,c.x,c.y);
+        });
+      }
+      const area=chart.chartArea; if(area){
+        const cx=(area.left+area.right)/2, cy=(area.top+area.bottom)/2;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='#66756e'; ctx.font='bold 10px Arial'; ctx.fillText('TOTAL',cx,cy-12);
+        ctx.fillStyle='#14251e'; ctx.font='bold 20px Arial'; ctx.fillText(angka(total),cx,cy+7);
+      }
+      ctx.restore();
+    }
+  };
+  function tglID(s){ if(!s) return '-'; const p=s.split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s; }
+  function tglSingkat(s){ if(!s) return '-'; const p=s.split('-'); return p.length===3?p[2]+'/'+p[1]:s; }
+  function namaBulan(s){ if(!s) return '-'; const p=s.split('-'); const nama=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; return p.length>=2?(nama[Number(p[1])-1]+' '+p[0]):s; }
+  function setLoading(on){ $('main').classList.toggle('loading',on); }
+  function showNotice(msg,ok){ const n=$('notice'); n.textContent=msg; n.className='notice '+(ok?'ok':'err'); }
+  function bukaForm(){
+    $('modalTitle').textContent='Form Input Data Harian ISPA';
+    $('formModal').dataset.mode='baru';
+    $('formModal').classList.add('show'); setTimeout(()=> $('fTanggal').focus(), 80);
+  }
+  function tutupForm(){ $('formModal').classList.remove('show'); }
+  function koreksiBaris(idx){
+    const r=rincianAktif[idx]; if(!r) return;
+    $('fTanggal').value=r.tanggal; $('fPuskesmas').value=r.puskesmas;
+    $('fBalita').value=r.balita||0; $('fAnak').value=r.anak||0; $('fRemaja').value=r.remaja||0;
+    $('fDewasa').value=r.dewasa||0; $('fLansia').value=r.lansia||0;
+    $('modalTitle').textContent='Koreksi Data Harian ISPA';
+    $('formModal').dataset.mode='koreksi';
+    $('notice').className='notice';
+    $('formModal').classList.add('show');
+  }
+  function pilihPuskesmasUntukKoreksi(nama){
+    $('filterPuskesmas').value=nama;
+    muatDashboardBulan($('filterBulan').value);
+  }
+  function tutupJikaLatar(e){ if(e.target === $('formModal')) tutupForm(); }
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') tutupForm(); });
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const t=todayISO(); $('fTanggal').value=t; $('filterBulan').value=t.slice(0,7);
+    google.script.run.withSuccessHandler(list=>{
+      const s=$('fPuskesmas'), f=$('filterPuskesmas');
+      (list||[]).forEach(x=>{
+        s.appendChild(new Option(x,x));
+        f.appendChild(new Option(x,x));
+      });
+    }).getDaftarPuskesmasISPA();
+    muatDashboardBulan($('filterBulan').value);
+    aturAutoRefresh();
+  });
+
+  /* ====== AUTO REFRESH (berjalan otomatis, interval tetap, tanpa kontrol di UI) ====== */
+  const AUTO_REFRESH_DETIK = 30;
+  function aturAutoRefresh(){
+    if(timerAuto){ clearInterval(timerAuto); timerAuto=null; }
+    $('liveBadge').classList.remove('off');
+    aturLabelLive();
+    timerAuto=setInterval(()=>{
+      if(document.hidden) return;                                  // hemat kuota saat tab tidak dibuka
+      if($('formModal').classList.contains('show')) return;         // jangan ganggu saat form input terbuka
+      muatDashboardBulan($('filterBulan').value, true);
+    }, AUTO_REFRESH_DETIK*1000);
+  }
+  function aturLabelLive(){ $('liveText').textContent='Auto refresh tiap '+(AUTO_REFRESH_DETIK<60?AUTO_REFRESH_DETIK+' detik':(AUTO_REFRESH_DETIK/60)+' menit'); }
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden && !$('formModal').classList.contains('show')){
+      muatDashboardBulan($('filterBulan').value, true);
+    }
+  });
+
+  let permintaanTerakhir = 0;
+  function muatDashboardBulan(bulan, diamDiam){
+    const nilai = bulan || todayISO().slice(0,7);
+    const pkm = $('filterPuskesmas').value || '';
+    const idPermintaan = ++permintaanTerakhir; // penanda urutan request, dipakai utk buang respons yg "basi"
+    $('filterBulan').value = nilai; // sinkronkan tampilan filter LANGSUNG dgn pilihan user, jangan tunggu respons server
+    sedangMuat=true;
+    if(!diamDiam) setLoading(true);
+    google.script.run
+      .withSuccessHandler(data=>{
+        if(idPermintaan!==permintaanTerakhir) return; // abaikan respons request lama yg baru selesai belakangan
+        sedangMuat=false; setLoading(false); renderDashboard(data, diamDiam);
+      })
+      .withFailureHandler(err=>{
+        if(idPermintaan!==permintaanTerakhir) return;
+        sedangMuat=false; setLoading(false);
+        if(diamDiam){ $('liveText').textContent='Gagal memuat, mencoba lagi...'; }
+        else alert('Gagal membaca data ISPA: '+(err&&err.message?err.message:err));
+      })
+      .getISPADataFromSheet(nilai+'-01', pkm);
+  }
+
+  function setNilai(id,val,flash){
+    const el=$(id), baru=angka(val);
+    if(el.textContent!==baru){ el.textContent=baru; if(flash){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } }
+  }
+
+  function renderDashboard(d, diamDiam){
+    if(!d||d.status==='error'){ if(!diamDiam) alert(d&&d.message?d.message:'Data ISPA gagal dibaca.'); return; }
+    const k=d.totalKategori||{};
+    const modeHarian = d.modeTampilan==='harian';
+    const sidik=JSON.stringify([d.grandTotal,k,d.rincian,d.jumlahPuskesmasInput,d.puskesmasTerpilih]);
+    const adaPerubahan = sidikJariData && sidik!==sidikJariData;
+    sidikJariData=sidik;
+    rincianAktif = d.rincian||[]; modeHarianAktif = modeHarian;
+
+    setNilai('nTotal',d.grandTotal,adaPerubahan); setNilai('nBalita',k.balita,adaPerubahan);
+    setNilai('nAnak',k.anak,adaPerubahan); setNilai('nRemaja',k.remaja,adaPerubahan);
+    setNilai('nDewasa',k.dewasa,adaPerubahan); setNilai('nLansia',k.lansia,adaPerubahan);
+
+    const namaPkm = d.puskesmasTerpilih || '';
+    $('thKolomUtama').textContent = modeHarian ? 'Tanggal' : 'Puskesmas / Fasilitas';
+    $('judulRekap').textContent = modeHarian ? ('Rekap Harian ISPA - '+namaPkm) : 'Rekap ISPA per Puskesmas / Fasilitas';
+    $('subJudulRekap').textContent = modeHarian ? 'Data harian sepanjang bulan yang dipilih untuk Puskesmas/fasilitas terpilih. Klik baris untuk mengoreksi.' : 'Data harian berdasarkan file Excel: Balita, Anak, Remaja, Dewasa dan Lansia. Pilih Puskesmas/Fasilitas di atas untuk melihat dan mengoreksi data per tanggal.';
+    $('judulTren').textContent = modeHarian ? ('Tren Harian ISPA - '+namaPkm) : 'Jumlah ISPA per Puskesmas / Fasilitas';
+    $('subJudulTren').textContent = modeHarian ? 'Jumlah kasus ISPA per hari sepanjang bulan yang dipilih.' : 'Total kasus ISPA berdasarkan Puskesmas/fasilitas pada bulan yang dipilih.';
+    $('hintKoreksi').classList.toggle('show', modeHarian && rincianAktif.length>0);
+
+    if(modeHarian){
+      const total=Number(d.totalHariBulan)||0, masuk=Number(d.jumlahHariInput)||0, pct= total? Math.min(100,masuk/total*100):0;
+      $('progressBar').style.width=pct+'%'; $('progressText').textContent=masuk+'/'+total+' hari terisi';
+    } else {
+      const masuk=Number(d.jumlahPuskesmasInput)||0,total=Number(d.totalPuskesmas)||14,pct=total?Math.min(100,masuk/total*100):0;
+      $('progressBar').style.width=pct+'%'; $('progressText').textContent=masuk+'/'+total+' input';
+    }
+    $('statusTanggal').textContent=(d.adaData?'Data bulan '+namaBulan(d.tanggalTerpilih):'Belum ada data ISPA.')+' • diperbarui '+jamSekarang();
+    if(d.tanggalTerpilih){ $('filterBulan').value=d.tanggalTerpilih.slice(0,7); }
+    if(adaPerubahan){ $('liveText').textContent='Data baru masuk '+jamSekarang(); setTimeout(aturLabelLive,4000); }
+
+    const tb=$('tbodyISPA'); tb.innerHTML='';
+    if(!rincianAktif.length){
+      tb.innerHTML='<tr><td colspan="7" class="empty">'+(modeHarian?'Belum ada data ISPA untuk Puskesmas ini pada bulan ini.':'Belum ada data ISPA pada bulan ini.')+'</td></tr>';
+    } else if(modeHarian){
+      rincianAktif.forEach((r,i)=>{ tb.insertAdjacentHTML('beforeend',`<tr class="baris-klik" title="Klik untuk mengoreksi data tanggal ini" onclick="koreksiBaris(${i})"><td><strong>${esc(tglID(r.tanggal))}</strong></td><td>${angka(r.balita)}</td><td>${angka(r.anak)}</td><td>${angka(r.remaja)}</td><td>${angka(r.dewasa)}</td><td>${angka(r.lansia)}</td><td class="total-col">${angka(r.total)}</td></tr>`); });
+    } else {
+      rincianAktif.forEach(r=>{ tb.insertAdjacentHTML('beforeend',`<tr class="baris-klik" title="Klik untuk lihat & koreksi data harian Puskesmas ini" onclick="pilihPuskesmasUntukKoreksi('${esc(r.puskesmas).replace(/'/g,"\\'")}')"><td><strong>${esc(r.puskesmas)}</strong></td><td>${angka(r.balita)}</td><td>${angka(r.anak)}</td><td>${angka(r.remaja)}</td><td>${angka(r.dewasa)}</td><td>${angka(r.lansia)}</td><td class="total-col">${angka(r.total)}</td></tr>`); });
+    }
+    renderGrafikHarian(d, modeHarian);
+    renderCharts(d, modeHarian);
+  }
+  function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  function renderGrafikHarian(d, modeHarian){
+    const kartu = $('kartuGrafikHarian');
+    const canvas = $('chartHarian');
+    const empty = $('emptyGrafikHarian');
+
+    // Grafik ini khusus untuk gabungan SEMUA Puskesmas / Fasilitas.
+    // Jika satu Puskesmas/Fasilitas dipilih, kartu disembunyikan otomatis.
+    if(modeHarian){
+      kartu.style.display = 'none';
+      if(chartHarian){ chartHarian.destroy(); chartHarian=null; }
+      return;
+    }
+
+    kartu.style.display = '';
+    const rows = (d.tren || [])
+      .slice()
+      .sort((a,b)=>String(a.tanggal).localeCompare(String(b.tanggal)));
+
+    $('judulGrafikHarian').textContent =
+      'Grafik Batang Harian ISPA - Semua Puskesmas / Fasilitas';
+    $('subJudulGrafikHarian').textContent =
+      'Jumlah kasus ISPA gabungan seluruh Puskesmas / Fasilitas per hari sepanjang bulan yang dipilih.';
+
+    if(!rows.length){
+      if(chartHarian){ chartHarian.destroy(); chartHarian=null; }
+      empty.style.display = 'flex';
+      empty.textContent = 'Belum ada data ISPA harian pada bulan yang dipilih.';
+      return;
+    }
+
+    empty.style.display = 'none';
+    const labels = rows.map(x=>tglSingkat(x.tanggal));
+    const nilai = rows.map(x=>Number(x.total)||0);
+
+    if(chartHarian){
+      chartHarian.data.labels = labels;
+      chartHarian.data.datasets[0].data = nilai;
+      chartHarian.update();
+      return;
+    }
+
+    chartHarian = new Chart(canvas,{
+      type:'bar',
+      plugins:[pluginLabelBar],
+      data:{
+        labels,
+        datasets:[{
+          label:'Jumlah Kasus ISPA',
+          data:nilai,
+          backgroundColor:'#087b52',
+          borderRadius:6,
+          borderSkipped:false,
+          barThickness:'flex',
+          maxBarThickness:28
+        }]
+      },
+      options:{
+        indexAxis:'x',
+        responsive:true,
+        maintainAspectRatio:false,
+        layout:{padding:{top:20,right:8,left:8,bottom:4}},
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>' '+angka(ctx.raw)+' kasus'}}
+        },
+        scales:{
+          y:{
+            beginAtZero:true,
+            grace:'15%',
+            ticks:{precision:0},
+            title:{display:true,text:'Jumlah Kasus'}
+          },
+          x:{
+            grid:{display:false},
+            title:{display:true,text:'Tanggal'}
+          }
+        }
+      }
+    });
+  }
+
+  function renderCharts(d, modeHarian){
+    let labels, nilai;
+    if(modeHarian){
+      labels=(d.rincian||[]).map(x=>tglSingkat(x.tanggal));
+      nilai=(d.rincian||[]).map(x=>Number(x.total)||0);
+    } else {
+      const rincian=(d.rincian||[]).slice().sort((a,b)=>(Number(b.total)||0)-(Number(a.total)||0));
+      labels=rincian.map(x=>x.puskesmas); nilai=rincian.map(x=>Number(x.total)||0);
+    }
+    const axis = modeHarian ? 'x' : 'y';
+
+    if(chartTren && modeTrenSebelumnya===axis){
+      chartTren.data.labels=labels; chartTren.data.datasets[0].data=nilai; chartTren.update();
+    } else {
+      if(chartTren) chartTren.destroy();
+      chartTren=new Chart($('chartTren'),{
+        type:'bar',
+        plugins:[pluginLabelBar],
+        data:{ labels, datasets:[{ label:'Jumlah Kasus ISPA', data:nilai, backgroundColor:'#087b52', borderRadius:6, borderSkipped:false, barThickness:'flex', maxBarThickness:28 }] },
+        options:{
+          indexAxis:axis, responsive:true, maintainAspectRatio:false,
+          layout: axis==='y' ? {padding:{right:34}} : {padding:{top:20}},
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+angka(ctx.raw)+' kasus'}}},
+          scales: axis==='y'
+            ? {x:{beginAtZero:true,grace:'6%',ticks:{precision:0},title:{display:true,text:'Jumlah Kasus'}},y:{grid:{display:false}}}
+            : {y:{beginAtZero:true,grace:'15%',ticks:{precision:0},title:{display:true,text:'Jumlah Kasus'}},x:{grid:{display:false}}}
+        }
+      });
+      modeTrenSebelumnya=axis;
+    }
+
+    const k=d.totalKategori||{};
+    const dataK=[k.balita||0,k.anak||0,k.remaja||0,k.dewasa||0,k.lansia||0];
+    if(chartKategori){
+      chartKategori.data.datasets[0].data=dataK; chartKategori.update();
+    } else {
+      chartKategori=new Chart($('chartKategori'),{
+        type:'doughnut',
+        plugins:[pluginLabelDonut],
+        data:{labels:['Balita','Anak','Remaja','Dewasa','Lansia'],datasets:[{data:dataK,backgroundColor:['#43a047','#1976d2','#7e57c2','#ef8b00','#d93b35'],borderWidth:2,borderColor:'#fff'}]},
+        options:{
+          responsive:true,maintainAspectRatio:false,cutout:'62%',
+          plugins:{
+            legend:{position:'bottom',labels:{boxWidth:11,usePointStyle:true}},
+            tooltip:{callbacks:{label:ctx=>{
+              const arr=ctx.dataset.data, tot=arr.reduce((a,b)=>a+(Number(b)||0),0);
+              return ' '+ctx.label+': '+angka(ctx.raw)+' kasus ('+persen(Number(ctx.raw)||0,tot)+')';
+            }}}
+          }
+        }
+      });
+    }
+  }
+  function simpanISPA(e){
+    e.preventDefault(); $('btnSimpan').disabled=true; showNotice('Menyimpan data...',true);
+    const data={tanggal:$('fTanggal').value,puskesmas:$('fPuskesmas').value,balita:$('fBalita').value,anak:$('fAnak').value,remaja:$('fRemaja').value,dewasa:$('fDewasa').value,lansia:$('fLansia').value};
+    google.script.run.withSuccessHandler(r=>{$('btnSimpan').disabled=false;if(r&&r.status==='success'){showNotice(r.pesan||'Data berhasil disimpan.',true);$('filterBulan').value=data.tanggal.slice(0,7);setTimeout(()=>muatDashboardBulan(data.tanggal.slice(0,7)),250);}else showNotice((r&&r.message)||'Gagal menyimpan data.',false);}).withFailureHandler(err=>{$('btnSimpan').disabled=false;showNotice('Gagal: '+err.message,false);}).simpanDataISPAHarian(data);
+  }
+  function resetForm(){ const t=$('fTanggal').value||todayISO(); $('ispaForm').reset(); $('fTanggal').value=t; ['fBalita','fAnak','fRemaja','fDewasa','fLansia'].forEach(id=>$(id).value=0); $('notice').className='notice'; }
+</script>
+</body>
+</html>
