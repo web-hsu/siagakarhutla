@@ -4255,6 +4255,12 @@ body.jpg-export-mode .map-title{
           const msg = err && err.message ? err.message : String(err || "Kesalahan tidak diketahui");
           document.getElementById("statusData").innerHTML =
             '<span class="demo">● GAGAL MEMUAT DATA: ' + msg + '</span>';
+          // Walau data gagal dimuat, isi pilihan tanggal dengan hari ini agar tidak kosong.
+          const elTgl = document.getElementById("tanggal");
+          if (elTgl && !elTgl.value) {
+            elTgl.value = tanggalISOSekarang();
+            document.getElementById("tanggalHeader").innerText = formatTanggal(elTgl.value);
+          }
           document.getElementById("tabelKecamatan").innerHTML =
             '<tr><td colspan="5">Gagal memuat data.</td></tr>';
           document.getElementById("tabelHotspot").innerHTML =
