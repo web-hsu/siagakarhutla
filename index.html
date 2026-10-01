@@ -3221,7 +3221,7 @@ body.jpg-export-mode .map-title{
           <div class="wsi-ico">🌫️</div>
           <div class="wsi-text">
             <strong>Data Kualitas Udara</strong>
-            <span>Estimasi model atmosfer CAMS (Open-Meteo), rata-rata 10 kecamatan di Hulu Sungai Utara</span>
+            <span>Pengukuran PM2.5 BMKG stasiun Banjarbaru &amp; Kotabaru (terdekat dari HSU), indeks ISPU; cadangan: model CAMS (Open-Meteo)</span>
           </div>
         </div>
       </div>
@@ -3527,7 +3527,7 @@ body.jpg-export-mode .map-title{
         <span class="aqi-overlay-face" id="aqiFace">🙂</span>
         <div class="aqi-overlay-main">
           <div class="aqi-overlay-number" id="aqiNumber">-</div>
-          <div class="aqi-overlay-label">AQI US • HSU</div>
+          <div class="aqi-overlay-label" id="aqiLabel">ISPU • HSU</div>
         </div>
         <div class="aqi-overlay-kategori" id="aqiKategori">Memuat...</div>
       </div>
@@ -3538,7 +3538,7 @@ body.jpg-export-mode .map-title{
         <span>💧 <strong id="aqiKelembaban">-</strong></span>
       </div>
       <div class="aqi-overlay-footer" id="aqiUpdateInfo">Memuat data Hulu Sungai Utara...</div>
-      <div class="aqi-overlay-footer">Rata-rata 10 kecamatan HSU • Estimasi model CAMS (Open-Meteo)</div>
+      <div class="aqi-overlay-footer" id="aqiSumber">Sumber: pengukuran PM2.5 BMKG (stasiun terdekat)</div>
     </div>
 
     <!-- INFORMASI ISPA - overlay di dalam peta, pojok kanan atas.
@@ -3984,6 +3984,11 @@ body.jpg-export-mode .map-title{
       (d.angin !== null && d.angin !== undefined) ? (d.angin + " km/h") : "-";
     document.getElementById("aqiKelembaban").innerText =
       (d.kelembaban !== null && d.kelembaban !== undefined) ? (d.kelembaban + " %") : "-";
+
+    const labelEl = document.getElementById("aqiLabel");
+    if (labelEl) labelEl.innerText = (d.skala === "ISPU" ? "ISPU" : "AQI US") + " • HSU";
+    const sumberEl = document.getElementById("aqiSumber");
+    if (sumberEl) sumberEl.innerText = d.sumber ? ("Sumber: " + d.sumber) : "";
 
     infoEl.innerText = "HSU • Update: " + formatTanggal(d.tanggal) + " " + formatWaktuAQI(d.waktu) + (response.stale ? " • bukan data hari ini" : "");
   }
