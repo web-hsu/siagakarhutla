@@ -30,7 +30,16 @@
             body: JSON.stringify({ fn: String(prop), args: args }),
             redirect: 'follow'
           })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return r.text(); })
+            .then(function (t) {
+              try { return JSON.parse(t); }
+              catch (_) {
+                var pesan = /^\s*</.test(t)
+                  ? 'Server Apps Script membalas HTML, bukan JSON (fungsi: ' + prop + '). Kemungkinan eksekusi kena batas waktu/memori, deployment belum "Anyone", atau URL /exec salah. Cek menu Executions di Apps Script.'
+                  : 'Respons server bukan JSON: ' + t.slice(0, 120);
+                throw new Error(pesan);
+              }
+            })
             .then(function (j) {
               if (j && j.__error) throw new Error(j.__error);
               if (onOk) onOk(j && Object.prototype.hasOwnProperty.call(j, 'result') ? j.result : j);
