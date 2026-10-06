@@ -3217,13 +3217,6 @@ body.jpg-export-mode .map-title{
             <span>Terintegrasi langsung dari SiPongi — Kementerian Kehutanan</span>
           </div>
         </div>
-        <div class="welcome-source-item">
-          <div class="wsi-ico">🌫️</div>
-          <div class="wsi-text">
-            <strong>Data Kualitas Udara</strong>
-            <span>Pengukuran PM2.5 BMKG stasiun Banjarbaru &amp; Kotabaru (terdekat dari HSU), dihitung sebagai US AQI; cadangan: model CAMS (Open-Meteo)</span>
-          </div>
-        </div>
       </div>
 
       <div class="welcome-note">⏱️ Data otomatis terupdate berkala ke sistem monitoring ini.</div>
@@ -3527,7 +3520,7 @@ body.jpg-export-mode .map-title{
         <span class="aqi-overlay-face" id="aqiFace">🙂</span>
         <div class="aqi-overlay-main">
           <div class="aqi-overlay-number" id="aqiNumber">-</div>
-          <div class="aqi-overlay-label" id="aqiLabel">AQI US • HSU</div>
+          <div class="aqi-overlay-label" id="aqiLabel">US AQI</div>
         </div>
         <div class="aqi-overlay-kategori" id="aqiKategori">Memuat...</div>
       </div>
@@ -3537,8 +3530,7 @@ body.jpg-export-mode .map-title{
         <span>💨 <strong id="aqiAngin">-</strong></span>
         <span>💧 <strong id="aqiKelembaban">-</strong></span>
       </div>
-      <div class="aqi-overlay-footer" id="aqiUpdateInfo">Memuat data Hulu Sungai Utara...</div>
-      <div class="aqi-overlay-footer" id="aqiSumber">Sumber: pengukuran PM2.5 BMKG (stasiun terdekat)</div>
+      <div class="aqi-overlay-footer" id="aqiUpdateInfo">Memuat data...</div>
     </div>
 
     <!-- INFORMASI ISPA - overlay di dalam peta, pojok kanan atas.
@@ -3986,11 +3978,9 @@ body.jpg-export-mode .map-title{
       (d.kelembaban !== null && d.kelembaban !== undefined) ? (d.kelembaban + " %") : "-";
 
     const labelEl = document.getElementById("aqiLabel");
-    if (labelEl) labelEl.innerText = (d.skala === "ISPU" ? "ISPU" : "AQI US") + " • HSU";
-    const sumberEl = document.getElementById("aqiSumber");
-    if (sumberEl) sumberEl.innerText = d.sumber ? ("Sumber: " + d.sumber) : "";
+    if (labelEl) labelEl.innerText = (d.skala === "ISPU" ? "ISPU" : "US AQI");
 
-    infoEl.innerText = "HSU • Update: " + formatTanggal(d.tanggal) + " " + formatWaktuAQI(d.waktu) + (response.stale ? " • bukan data hari ini" : "");
+    infoEl.innerText = "Update: " + formatTanggal(d.tanggal) + " " + formatWaktuAQI(d.waktu) + (response.stale ? " • bukan data hari ini" : "");
   }
 
   // Memuat ulang data kualitas udara (AQI).
