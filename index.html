@@ -3468,7 +3468,7 @@ body.jpg-export-mode .map-title{
       <div class="stat-text">
         <div class="stat-title">TOTAL HOTSPOT</div>
         <div class="stat-number" id="totalHotspot">0</div>
-        <div class="stat-sub">Total Hari Ini</div>
+        <div class="stat-sub" id="totalSubLabel">Total Hari Ini</div>
       </div>
     </div>
 
@@ -4282,9 +4282,8 @@ body.jpg-export-mode .map-title{
     const tanggalEl = document.getElementById("tanggal");
     const tanggal = tanggalEl ? tanggalEl.value : "";
 
-    // Filter tanggal hanya berlaku untuk Detail Hotspot.
-    // Dashboard, peta, dan Sebaran tetap memakai data tanggal
-    // berjalan (hari ini).
+    // Filter tanggal berlaku untuk seluruh dashboard: kartu total,
+    // peta, Sebaran per kecamatan, Detail Hotspot, dan Tren.
     dataAktif = semuaData.filter(item => {
       if (tanggal && String(item.tanggal || "") !== tanggal) return false;
       return true;
@@ -4333,7 +4332,7 @@ body.jpg-export-mode .map-title{
   }
 
   function render() {
-    // Dashboard, peta, dan Sebaran memakai data tanggal berjalan (hari ini).
+    // Dashboard, peta, dan Sebaran mengikuti tanggal yang dipilih (dataAktif).
     updateStats();
     updateMap();
     updateKecamatan();
@@ -4346,7 +4345,7 @@ body.jpg-export-mode .map-title{
   }
 
   function updateStats() {
-    const sumber = dataHariIni || [];
+    const sumber = dataAktif || [];   // mengikuti tanggal yang dipilih
     const high = sumber.filter(x => String(x.confidence || "").toUpperCase() === "HIGH").length;
     const medium = sumber.filter(x => String(x.confidence || "").toUpperCase() === "MEDIUM").length;
     const low = sumber.filter(x => String(x.confidence || "").toUpperCase() === "LOW").length;
@@ -4355,6 +4354,12 @@ body.jpg-export-mode .map-title{
     const pct = n => total ? ((n / total) * 100).toFixed(1).replace(".", ",") + "% dari total" : "0% dari total";
 
     document.getElementById("totalHotspot").innerText = total;
+    const subEl = document.getElementById("totalSubLabel");
+    if (subEl) {
+      const tglPilih = (document.getElementById("tanggal") || {}).value || "";
+      subEl.innerText = (!tglPilih || tglPilih === toLocalDateStr(new Date()))
+        ? "Total Hari Ini" : "Total " + formatTanggal(tglPilih);
+    }
     document.getElementById("totalHigh").innerText = high;
     document.getElementById("totalMedium").innerText = medium;
     document.getElementById("totalLow").innerText = low;
@@ -4368,7 +4373,7 @@ body.jpg-export-mode .map-title{
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
 
-    (dataHariIni || []).forEach(item => {
+    (dataAktif || []).forEach(item => {
       if (isNaN(item.latitude) || isNaN(item.longitude)) return;
 
       const color = getColor(item.confidence);
@@ -4400,7 +4405,7 @@ body.jpg-export-mode .map-title{
   function updateKecamatan() {
     const grouped = {};
 
-    (dataHariIni || []).forEach(item => {
+    (dataAktif || []).forEach(item => {
       const kec = item.kecamatan || "Tidak diketahui";
       const desa = item.desa || "Tidak diketahui";
       const conf = String(item.confidence || "LOW").toUpperCase();
