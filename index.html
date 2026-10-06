@@ -4212,6 +4212,22 @@ body.jpg-export-mode .map-title{
   // pemuatan pertama saat halaman dibuka) - dipakai supaya auto-refresh
   // tidak memaksa pindah tanggal ketika pengguna sedang melihat tanggal
   // histori tertentu di filter "Detail Hotspot".
+  // Percobaan ulang otomatis: Apps Script kadang membalas halaman error
+  // (HTML) saat sibuk / cold start. Biasanya berhasil pada percobaan berikutnya.
+  let loadDataPercobaan = 0;
+  const LOAD_DATA_MAKS_ULANG = 4;
+
+  function jadwalkanUlangLoadData(opsi, alasan) {
+    if (loadDataPercobaan >= LOAD_DATA_MAKS_ULANG) return false;
+    loadDataPercobaan++;
+    const tunggu = 2000 * loadDataPercobaan;   // 2s, 4s, 6s, 8s
+    document.getElementById("statusData").innerHTML =
+      '<span class="demo">● SERVER SIBUK, MENCOBA ULANG (' + loadDataPercobaan + '/' + LOAD_DATA_MAKS_ULANG + ')...</span>';
+    console.warn("loadData gagal (" + alasan + "), ulang dalam " + tunggu + " ms");
+    setTimeout(function () { loadData(opsi); }, tunggu);
+    return true;
+  }
+
   function loadData(opsi) {
     const auto = !!(opsi && opsi.autoRefresh);
 
@@ -4220,7 +4236,8 @@ body.jpg-export-mode .map-title{
     if (typeof google !== 'undefined' && google.script && google.script.run) {
       google.script.run
         .withSuccessHandler(function(response) {
-          if (response.status === "success") {
+          if (response && response.status === "success") {
+            loadDataPercobaan = 0;
             semuaData = Array.isArray(response.data) ? response.data : [];
 
             // Data hari ini dihitung ulang setiap kali data dimuat.
@@ -4243,11 +4260,13 @@ body.jpg-export-mode .map-title{
             }
             filterData();
           } else {
-            document.getElementById("statusData").innerHTML = '<span class="demo">● ERROR: ' + response.message + '</span>';
+            if (jadwalkanUlangLoadData(opsi, "respons error")) return;
+            document.getElementById("statusData").innerHTML = '<span class="demo">● ERROR: ' + (response && response.message ? response.message : "respons kosong") + '</span>';
           }
         })
         .withFailureHandler(function(err) {
           const msg = err && err.message ? err.message : String(err || "Kesalahan tidak diketahui");
+          if (jadwalkanUlangLoadData(opsi, msg)) return;
           document.getElementById("statusData").innerHTML =
             '<span class="demo">● GAGAL MEMUAT DATA: ' + msg + '</span>';
           // Walau data gagal dimuat, isi pilihan tanggal dengan hari ini agar tidak kosong.
@@ -4673,10 +4692,12 @@ body.jpg-export-mode .map-title{
 
     loadBatasAdministratif();
     loadLabelKecamatan();
+    // Panggilan ke server dibuat BERTAHAP (bukan serentak) agar Apps Script
+    // tidak kewalahan dan membalas halaman error HTML.
     loadData();
-    updateAQIData();
-    updateISPAWidget();
-    perbaruiDataSaatDiakses();
+    setTimeout(updateAQIData, 1500);
+    setTimeout(updateISPAWidget, 3000);
+    setTimeout(perbaruiDataSaatDiakses, 8000);
 
     // ==========================================================
     // AUTO-REFRESH SEMUA DATA
