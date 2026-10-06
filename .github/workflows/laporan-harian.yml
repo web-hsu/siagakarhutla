@@ -2,7 +2,7 @@ name: Laporan Harian Hotspot
 
 on:
   schedule:
-    - cron: "0 10 * * *"   # 10:00 UTC = 18:00 WITA (UTC+8)
+    - cron: "50 9 * * *"   # 10:00 UTC = 17:50 WITA (UTC+8)
   workflow_dispatch:        # tombol "Run workflow" untuk uji manual
 
 jobs:
