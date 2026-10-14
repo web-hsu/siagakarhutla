@@ -3586,7 +3586,6 @@ body.jpg-export-mode .map-title{
       <div class="legend-separator"></div>
       <span><i class="line-kab"></i> Batas Kabupaten</span>
       <span><i class="line-kec"></i> Batas Kecamatan</span>
-      <span class="firms-legend-item"><i class="firms-legend-diamond"></i> Real Time (NASA FIRMS)</span>
     </div>
     <div id="map"></div>
   </section>
@@ -3713,34 +3712,6 @@ body.jpg-export-mode .map-title{
     </div>
   </div>
 </footer>
-
-<!-- Hotspot Real Time (NASA FIRMS) -->
-<style id="firms-realtime">
-.firms-ctrl{background:rgba(255,255,255,.96);border-radius:9px;box-shadow:0 2px 10px rgba(0,0,0,.22);padding:8px 10px;font-size:12px;line-height:1.35;color:#1f2937;width:236px;max-width:62vw}
-.firms-head{display:flex;align-items:center;gap:7px;font-weight:800;font-size:12px;cursor:pointer;margin:0}
-.firms-head input{margin:0;accent-color:#1565c0;width:15px;height:15px}
-.firms-body{margin-top:7px;border-top:1px solid #e5e7eb;padding-top:7px}
-.firms-ctrl.firms-off .firms-body{display:none}
-.firms-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
-.firms-row select{font-size:12px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:5px;background:#fff}
-.firms-total{font-size:12.5px}
-.firms-chips{display:flex;gap:10px;flex-wrap:wrap;margin:5px 0}
-.firms-chip{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:11.5px}
-.firms-chip i{width:9px;height:9px;transform:rotate(45deg);display:inline-block;border:1.5px solid #1565c0;box-sizing:border-box}
-.firms-info{font-size:11px;color:#374151}
-.firms-foot{font-size:10px;color:#6b7280;margin-top:5px}
-.firms-warn{color:#b45309;font-size:11px;margin-top:5px}
-.firms-icon{background:transparent!important;border:0!important}
-.firms-diamond{display:block;width:14px;height:14px;margin:2px;transform:rotate(45deg);border:2px solid #1565c0;box-shadow:0 0 0 1.5px #fff,0 1px 4px rgba(0,0,0,.4);box-sizing:border-box}
-.firms-baru{animation:firmsPulse 1.8s ease-out infinite}
-@keyframes firmsPulse{0%{box-shadow:0 0 0 1.5px #fff,0 0 0 0 rgba(21,101,192,.55)}100%{box-shadow:0 0 0 1.5px #fff,0 0 0 11px rgba(21,101,192,0)}}
-.firms-legend-diamond{width:9px;height:9px;transform:rotate(45deg);border:2px solid #1565c0;background:#f57c00;display:inline-block;box-sizing:border-box}
-body.jpg-export-mode .firms-ctrl,body.jpg-export-mode .firms-legend-item{display:none!important}
-@media (max-width:768px){
-  .leaflet-bottom.leaflet-left{margin-bottom:84px}
-  .firms-ctrl{width:206px}
-}
-</style>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -4707,272 +4678,6 @@ body.jpg-export-mode .firms-ctrl,body.jpg-export-mode .firms-legend-item{display
       .perbaruiSaatDiakses();
   }
 
-  // ============================================================
-  // HOTSPOT REAL TIME - NASA FIRMS (lapisan terpisah di peta)
-  // Data diambil lewat Apps Script (getHotspotRealtimeFIRMS) supaya
-  // MAP_KEY tidak terlihat di GitHub Pages. Tidak ditulis ke Sheet
-  // dan TIDAK ikut dihitung di statistik/tabel/ekspor JPG-PDF.
-  // ============================================================
-  const FIRMS_REFRESH_MS = 10 * 60 * 1000;
-  const FIRMS_WARNA = { HIGH: "#e53935", MEDIUM: "#f57c00", LOW: "#fbc02d" };
-  const firmsLayer = L.layerGroup();
-  let firmsMentah = [];            // semua titik dari server (kotak sekitar HSU)
-  let firmsData = [];              // hanya yang di dalam batas Kab. HSU
-  let firmsJam = 24;               // rentang waktu yang ditampilkan
-  let firmsMemuat = false;
-  let firmsStatus = "memuat";      // memuat | ok | error
-  let firmsPesan = "";
-  let firmsPeringatan = "";
-  let firmsDiambilTs = null;
-  let firmsSignatur = "";
-  let firmsRingKab = null;
-  let firmsRingKec = [];
-  let firmsTersembunyiExport = false;
-
-  function firmsSiapkanRing() {
-    function buat(f) {
-      const g = f && f.geometry;
-      if (!g) return null;
-      const ring = g.type === "Polygon" ? g.coordinates[0] : (g.type === "LineString" ? g.coordinates : null);
-      if (!ring || ring.length < 3) return null;
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      ring.forEach(function (p) {
-        if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
-        if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
-      });
-      return { nama: (f.properties && f.properties.name) || "-", ring: ring, minX: minX, minY: minY, maxX: maxX, maxY: maxY };
-    }
-    const fitur = (typeof BATAS_HSU_GEOJSON !== "undefined" && BATAS_HSU_GEOJSON.features) || [];
-    firmsRingKab = null;
-    firmsRingKec = [];
-    fitur.forEach(function (f) {
-      const level = f.properties && f.properties.level;
-      const r = buat(f);
-      if (!r) return;
-      if (level === "kabupaten") firmsRingKab = r;
-      else if (level === "kecamatan") firmsRingKec.push(r);
-    });
-  }
-
-  // Ray casting: apakah titik (lon, lat) berada di dalam cincin batas.
-  function firmsDiDalam(lon, lat, r) {
-    if (lon < r.minX || lon > r.maxX || lat < r.minY || lat > r.maxY) return false;
-    let dalam = false;
-    const p = r.ring;
-    for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
-      const xi = p[i][0], yi = p[i][1], xj = p[j][0], yj = p[j][1];
-      if (((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) dalam = !dalam;
-    }
-    return dalam;
-  }
-
-  function firmsProsesMentah() {
-    if (!firmsRingKab) firmsSiapkanRing();
-    firmsData = [];
-    firmsMentah.forEach(function (t) {
-      const lon = Number(t.longitude), lat = Number(t.latitude), ts = Number(t.ts);
-      if (isNaN(lon) || isNaN(lat) || isNaN(ts)) return;
-      if (firmsRingKab && !firmsDiDalam(lon, lat, firmsRingKab)) return;
-      let kec = "-";
-      for (let i = 0; i < firmsRingKec.length; i++) {
-        if (firmsDiDalam(lon, lat, firmsRingKec[i])) { kec = firmsRingKec[i].nama; break; }
-      }
-      firmsData.push(Object.assign({}, t, { latitude: lat, longitude: lon, ts: ts, kecamatan: kec }));
-    });
-  }
-
-  function firmsFormatWaktu(ts) {
-    try {
-      return new Date(ts).toLocaleString("id-ID", {
-        timeZone: "Asia/Makassar", day: "2-digit", month: "short", year: "numeric",
-        hour: "2-digit", minute: "2-digit", hour12: false
-      }) + " WITA";
-    } catch (e) { return new Date(ts).toISOString(); }
-  }
-
-  function firmsFormatJam(ts) {
-    try {
-      return new Date(ts).toLocaleTimeString("id-ID", {
-        timeZone: "Asia/Makassar", hour: "2-digit", minute: "2-digit", hour12: false
-      }) + " WITA";
-    } catch (e) { return ""; }
-  }
-
-  function firmsUmur(ts) {
-    const m = Math.max(0, Math.round((Date.now() - ts) / 60000));
-    if (m < 1) return "baru saja";
-    if (m < 60) return m + " menit lalu";
-    const j = Math.floor(m / 60), s = m % 60;
-    return j + " jam" + (s ? " " + s + " menit" : "") + " lalu";
-  }
-
-  function firmsAktif() {
-    const batas = Date.now() - firmsJam * 3600 * 1000;
-    return firmsData.filter(function (t) { return t.ts >= batas; });
-  }
-
-  function firmsIkon(t) {
-    const baru = (Date.now() - t.ts) <= 3 * 3600 * 1000;   // terdeteksi <= 3 jam lalu: berdenyut
-    return L.divIcon({
-      className: "firms-icon",
-      html: '<span class="firms-diamond' + (baru ? " firms-baru" : "") +
-            '" style="background:' + (FIRMS_WARNA[t.confidence] || FIRMS_WARNA.LOW) + '"></span>',
-      iconSize: [18, 18], iconAnchor: [9, 9], popupAnchor: [0, -10]
-    });
-  }
-
-  function firmsIsiPopup(t) {
-    const confMentah = t.confidenceMentah
-      ? " (" + escapeHtml(t.confidenceMentah) + (t.sumber === "MODIS" ? "%" : "") + ")" : "";
-    return '<strong>🛰️ HOTSPOT REAL TIME</strong><br>' +
-      '<span style="color:#6b7280;font-size:11px">NASA FIRMS (NRT) · belum diverifikasi</span><br><br>' +
-      '<b>Kecamatan:</b> ' + escapeHtml(t.kecamatan || "-") + '<br>' +
-      '<b>Terdeteksi:</b> ' + firmsFormatWaktu(t.ts) + '<br>' +
-      '<span style="color:#6b7280;font-size:11px">' + firmsUmur(t.ts) + '</span><br>' +
-      '<b>Satelit:</b> ' + escapeHtml(t.satelit || "-") + '<br>' +
-      '<b>Confidence:</b> ' + escapeHtml(t.confidence || "-") + confMentah + '<br>' +
-      (t.frp !== null && t.frp !== undefined ? '<b>FRP:</b> ' + Number(t.frp).toFixed(1) + ' MW<br>' : '') +
-      (t.siangMalam ? '<b>Waktu:</b> ' + escapeHtml(t.siangMalam) + '<br>' : '') +
-      '<br><b>Koordinat:</b> ' + t.latitude.toFixed(5) + ', ' + t.longitude.toFixed(5);
-  }
-
-  // Menggambar ulang penanda HANYA bila himpunan titik yang tampil berubah,
-  // supaya popup yang sedang dibuka tidak tertutup oleh refresh berkala.
-  function firmsGambar() {
-    const tampil = firmsAktif();
-    const sig = tampil.map(function (t) {
-      return t.ts + "," + t.latitude + "," + t.longitude + "," + t.satelit + "," +
-             ((Date.now() - t.ts) <= 3 * 3600 * 1000 ? 1 : 0);
-    }).join("|");
-    if (sig !== firmsSignatur) {
-      firmsSignatur = sig;
-      firmsLayer.clearLayers();
-      tampil.forEach(function (t) {
-        L.marker([t.latitude, t.longitude], { icon: firmsIkon(t), keyboard: false, riseOnHover: true })
-          .bindPopup(function () { return firmsIsiPopup(t); })
-          .addTo(firmsLayer);
-      });
-    }
-    firmsRenderPanel(tampil);
-  }
-
-  function firmsRenderPanel(tampil) {
-    const el = document.getElementById("firmsBody");
-    if (!el) return;
-    tampil = tampil || firmsAktif();
-    let html = "";
-
-    if (firmsStatus === "memuat" && !firmsDiambilTs) {
-      html = '<div class="firms-info">Memuat data NASA FIRMS…</div>';
-    } else if (firmsStatus === "error" && !firmsDiambilTs) {
-      html = '<div class="firms-warn">⚠ Gagal memuat: ' + escapeHtml(String(firmsPesan).slice(0, 160)) + '</div>';
-    } else {
-      const h = tampil.filter(function (t) { return t.confidence === "HIGH"; }).length;
-      const m = tampil.filter(function (t) { return t.confidence === "MEDIUM"; }).length;
-      const l = tampil.length - h - m;
-      html += '<div class="firms-total"><b>' + tampil.length + '</b> titik dalam ' + firmsJam + ' jam terakhir</div>';
-      if (tampil.length) {
-        const terbaru = tampil.reduce(function (a, b) { return b.ts > a.ts ? b : a; });
-        html += '<div class="firms-chips">' +
-          '<span class="firms-chip"><i style="background:' + FIRMS_WARNA.HIGH + '"></i>' + h + '</span>' +
-          '<span class="firms-chip"><i style="background:' + FIRMS_WARNA.MEDIUM + '"></i>' + m + '</span>' +
-          '<span class="firms-chip"><i style="background:' + FIRMS_WARNA.LOW + '"></i>' + l + '</span></div>' +
-          '<div class="firms-info">Terbaru: ' + firmsFormatJam(terbaru.ts) + ' (' + firmsUmur(terbaru.ts) + ')</div>';
-      } else {
-        html += '<div class="firms-info">Tidak ada hotspot terdeteksi pada rentang ini.</div>';
-      }
-      html += '<div class="firms-foot">Diperbarui ' + (firmsDiambilTs ? firmsFormatJam(firmsDiambilTs) : "-") +
-              ' · NRT, tertunda ± 3 jam dari lintasan satelit</div>';
-      if (firmsStatus === "error") {
-        html += '<div class="firms-warn">⚠ Pembaruan terakhir gagal, menampilkan data sebelumnya.</div>';
-      } else if (firmsPeringatan) {
-        html += '<div class="firms-warn">⚠ ' + escapeHtml(String(firmsPeringatan).slice(0, 160)) + '</div>';
-      }
-    }
-    el.innerHTML = html;
-  }
-
-  function firmsMuat() {
-    if (firmsMemuat) return;
-    if (typeof google === "undefined" || !google.script || !google.script.run) return;
-    firmsMemuat = true;
-    firmsStatus = "memuat";
-    google.script.run
-      .withSuccessHandler(function (r) {
-        firmsMemuat = false;
-        if (r && r.status === "success") {
-          firmsMentah = Array.isArray(r.data) ? r.data : [];
-          firmsDiambilTs = Number(r.diambil) || Date.now();
-          firmsPeringatan = r.peringatan || "";
-          firmsStatus = "ok";
-          firmsProsesMentah();
-        } else {
-          firmsStatus = "error";
-          firmsPesan = (r && r.message) ? r.message : "respons kosong";
-        }
-        firmsGambar();
-      })
-      .withFailureHandler(function (err) {
-        firmsMemuat = false;
-        firmsStatus = "error";
-        firmsPesan = err && err.message ? err.message : String(err || "kesalahan tidak diketahui");
-        firmsGambar();
-      })
-      .getHotspotRealtimeFIRMS();
-  }
-
-  function firmsBuatKontrol() {
-    const kontrol = L.control({ position: "bottomleft" });
-    kontrol.onAdd = function () {
-      const div = L.DomUtil.create("div", "firms-ctrl");
-      div.innerHTML =
-        '<label class="firms-head"><input type="checkbox" id="firmsToggle" checked> 🛰️ Real Time · NASA FIRMS</label>' +
-        '<div class="firms-body">' +
-          '<div class="firms-row"><span>Rentang waktu</span>' +
-            '<select id="firmsJam">' +
-              '<option value="3">3 jam</option><option value="6">6 jam</option>' +
-              '<option value="12">12 jam</option><option value="24" selected>24 jam</option>' +
-              '<option value="48">48 jam</option>' +
-            '</select></div>' +
-          '<div id="firmsBody"></div>' +
-        '</div>';
-      L.DomEvent.disableClickPropagation(div);
-      L.DomEvent.disableScrollPropagation(div);
-      return div;
-    };
-    kontrol.addTo(map);
-
-    document.getElementById("firmsToggle").addEventListener("change", function () {
-      const ctrl = document.querySelector(".firms-ctrl");
-      if (this.checked) { firmsLayer.addTo(map); if (ctrl) ctrl.classList.remove("firms-off"); }
-      else { map.removeLayer(firmsLayer); if (ctrl) ctrl.classList.add("firms-off"); }
-    });
-    document.getElementById("firmsJam").addEventListener("change", function () {
-      firmsJam = Number(this.value) || 24;
-      firmsGambar();
-    });
-  }
-
-  // Ekspor JPG/PDF memakai data resmi (Sheet) saja: lapisan real time
-  // disembunyikan sementara selama tangkapan layar lalu dipulihkan.
-  function firmsSembunyikanUntukExport() {
-    firmsTersembunyiExport = map.hasLayer(firmsLayer);
-    if (firmsTersembunyiExport) map.removeLayer(firmsLayer);
-  }
-  function firmsPulihkanSetelahExport() {
-    if (firmsTersembunyiExport) firmsLayer.addTo(map);
-    firmsTersembunyiExport = false;
-  }
-
-  function firmsInit() {
-    firmsBuatKontrol();
-    firmsLayer.addTo(map);
-    firmsRenderPanel();
-    setTimeout(firmsMuat, 4000);                       // bertahap, setelah panggilan utama
-    setInterval(firmsMuat, FIRMS_REFRESH_MS);          // ambil ulang tiap 10 menit
-    setInterval(firmsGambar, 60 * 1000);               // segarkan teks "x menit lalu" & batas rentang
-  }
-
   function init() {
     const sekarang = new Date();
     const tgl = sekarang.getDate();
@@ -4987,7 +4692,6 @@ body.jpg-export-mode .firms-ctrl,body.jpg-export-mode .firms-legend-item{display
 
     loadBatasAdministratif();
     loadLabelKecamatan();
-    firmsInit();
     // Panggilan ke server dibuat BERTAHAP (bukan serentak) agar Apps Script
     // tidak kewalahan dan membalas halaman error HTML.
     loadData();
@@ -5211,7 +4915,6 @@ body.jpg-export-mode .firms-ctrl,body.jpg-export-mode .firms-legend-item{display
       });
     }
 
-    firmsSembunyikanUntukExport();
     return new Promise(function (resolve, reject) {
       // Mode export mengubah ukuran container peta. Leaflet dihitung ulang
       // beberapa kali agar pixel-origin, garis batas, dan marker benar-benar
@@ -5266,7 +4969,6 @@ body.jpg-export-mode .firms-ctrl,body.jpg-export-mode .firms-legend-item{display
                 })();
               }).catch(reject).finally(function () {
                 document.body.classList.remove("jpg-export-mode");
-                firmsPulihkanSetelahExport();
 
                 // FIX: peta bergeser setiap kali export. invalidateSize({pan:false})
                 // menjaga pojok kiri-atas peta, bukan titik tengahnya, sehingga saat
