@@ -28,6 +28,7 @@
   // Fungsi yang hanya MEMBACA data -> aman dicoba ulang.
   var FUNGSI_BACA = {
     getHotspotDataFromSheet: 1,
+    getHotspotRealtimeFIRMS: 1,
     getAQIDataFromSheet: 1,
     getISPADataFromSheet: 1,
     getISPADataHariIni: 1,
